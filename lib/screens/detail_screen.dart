@@ -26,7 +26,7 @@ class _DetailScreenState extends State<DetailScreen> {
   bool _isDialogVisible = false;
 
   final MapController _mapController = MapController();
-  final double _defaultZoom = 15;
+  final double _defaultZoom = 17.8;
   List<LatLng> walkingRoutePoints = [];
   double _rotation = 0;
 
@@ -241,18 +241,43 @@ class _DetailScreenState extends State<DetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Comuna:',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                              Text(residence.commune),
+                              Row(
+                                children: [
+                                  const Text(
+                                    '\u2022 ', // Punto tipo lista
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const Text(
+                                    'Comuna:',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(residence.commune),
+                                ],
+                              ),
                               const SizedBox(height: 10),
-                              const Text('Dirección:',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.bold)),
-                              Text(residence.address),
+                              Row(
+                                children: [
+                                  const Text(
+                                    '\u2022 ', // Punto tipo lista
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const Text('Dirección: ',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold)),
+                                  Text(residence.address),
+                                ],
+                              ),
                               const SizedBox(height: 20),
                               SizedBox(
-                                height: 250,
+                                height: 320,
                                 child: Stack(
                                   children: [
                                     FlutterMap(
@@ -362,42 +387,49 @@ class _DetailScreenState extends State<DetailScreen> {
                                     ),
                                     Positioned(
                                       right: 10,
-                                      top: 10,
-                                      child: Column(
-                                        children: [
-                                          FloatingActionButton(
-                                            heroTag: 'btnUser',
-                                            mini: true,
-                                            onPressed: _centerOnUser,
-                                            tooltip: 'Centrar en mi ubicación',
-                                            child:
-                                                const Icon(Icons.my_location),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          FloatingActionButton(
-                                            heroTag: 'btnHouse',
-                                            mini: true,
-                                            onPressed: _centerOnResidence,
-                                            tooltip: 'Centrar en residencia',
-                                            child: const Icon(Icons.home),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          FloatingActionButton(
-                                            heroTag: 'btnZoomIn',
-                                            mini: true,
-                                            onPressed: _zoomIn,
-                                            tooltip: 'Acercar',
-                                            child: const Icon(Icons.zoom_in),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          FloatingActionButton(
-                                            heroTag: 'btnZoomOut',
-                                            mini: true,
-                                            onPressed: _zoomOut,
-                                            tooltip: 'Alejar',
-                                            child: const Icon(Icons.zoom_out),
-                                          ),
-                                        ],
+                                      top: 0,
+                                      bottom: 0,
+                                      child: SizedBox(
+                                        height: 320, // igual al alto del mapa
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            FloatingActionButton(
+                                              heroTag: 'btnUser',
+                                              mini: true,
+                                              onPressed: _centerOnUser,
+                                              tooltip:
+                                                  'Centrar en mi ubicación',
+                                              child:
+                                                  const Icon(Icons.my_location),
+                                            ),
+                                            const SizedBox(height: 20),
+                                            FloatingActionButton(
+                                              heroTag: 'btnHouse',
+                                              mini: true,
+                                              onPressed: _centerOnResidence,
+                                              tooltip: 'Centrar en residencia',
+                                              child: const Icon(Icons.home),
+                                            ),
+                                            const SizedBox(height: 20),
+                                            FloatingActionButton(
+                                              heroTag: 'btnZoomIn',
+                                              mini: true,
+                                              onPressed: _zoomIn,
+                                              tooltip: 'Acercar',
+                                              child: const Icon(Icons.zoom_in),
+                                            ),
+                                            const SizedBox(height: 20),
+                                            FloatingActionButton(
+                                              heroTag: 'btnZoomOut',
+                                              mini: true,
+                                              onPressed: _zoomOut,
+                                              tooltip: 'Alejar',
+                                              child: const Icon(Icons.zoom_out),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
