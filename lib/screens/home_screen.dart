@@ -4,15 +4,17 @@ import 'package:http/http.dart' as http;
 import '../routes/app_routes.dart';
 
 class Residence {
+  final int id; // 🔹 ID para el endpoint /schedule_change_state/
   final String name;
   final String image;
   final String commune;
   final String address;
-  final String status;
+  String status;
   final double latitude;
   final double length;
 
   Residence({
+    required this.id,
     required this.name,
     required this.image,
     required this.commune,
@@ -24,6 +26,7 @@ class Residence {
 
   factory Residence.fromJson(Map<String, dynamic> json) {
     return Residence(
+      id: json['home_clean_register_id'] ?? 0,
       name: json['home_data_name'] ?? 'Sin nombre',
       image: json['home_data_image'] ?? '',
       commune: json['home_data_commune'] ?? 'Desconocida',
@@ -36,11 +39,14 @@ class Residence {
 
   @override
   bool operator ==(Object other) {
-    return other is Residence && other.name == name && other.commune == commune;
+    return other is Residence &&
+        other.id == id &&
+        other.name == name &&
+        other.commune == commune;
   }
 
   @override
-  int get hashCode => name.hashCode ^ commune.hashCode;
+  int get hashCode => id.hashCode ^ name.hashCode ^ commune.hashCode;
 }
 
 class HomeScreen extends StatefulWidget {
@@ -97,8 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
           .toSet()
           .toList();
 
-      print(
-          '✔️ Se encontraron ${residences.length} residencias válidas para hoy');
       return residences;
     } else {
       throw Exception('Error al cargar residencias: ${response.statusCode}');

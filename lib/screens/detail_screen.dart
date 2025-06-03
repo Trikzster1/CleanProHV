@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -18,11 +19,18 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   LatLng? residenceLocation;
   LatLng? userLocation;
-  String? walkingDistanceKm;
+  double? directDistanceKm;
+  double? lastValidDirectDistanceKm;
+
+  bool hasEntered = false;
+  bool _isDialogVisible = false;
+
   final MapController _mapController = MapController();
   final double _defaultZoom = 15;
   List<LatLng> walkingRoutePoints = [];
   double _rotation = 0;
+
+  Timer? _distanceTimer;
 
   final String openRouteServiceApiKey =
       '5b3ce3597851110001cf624880b29eb1232a423c855eebdc9e8daa64';
@@ -44,10 +52,21 @@ class _DetailScreenState extends State<DetailScreen> {
       }
     });
 
-    _getUserLocationAndRoute(residenceLocation!);
+    _updateLocationAndDistances();
+    _distanceTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _updateLocationAndDistances();
+    });
   }
 
-  Future<void> _getUserLocationAndRoute(LatLng destination) async {
+  @override
+  void dispose() {
+    _distanceTimer?.cancel();
+    _isDialogVisible = false;
+
+    super.dispose();
+  }
+
+  Future<void> _updateLocationAndDistances() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
 
@@ -62,53 +81,16 @@ class _DetailScreenState extends State<DetailScreen> {
 
     final position = await Geolocator.getCurrentPosition();
     final userLatLng = LatLng(position.latitude, position.longitude);
-    walkingDistanceKm = null;
+    const Distance distance = Distance();
+
     if (!mounted) return;
     setState(() {
       userLocation = userLatLng;
+      final distanceInMeters =
+          distance(userLatLng, residenceLocation!); // metros
+      directDistanceKm = distanceInMeters / 1000;
+      lastValidDirectDistanceKm = directDistanceKm;
     });
-
-    await _fetchWalkingRoute(from: userLatLng, to: destination);
-  }
-
-  Future<void> _fetchWalkingRoute({
-    required LatLng from,
-    required LatLng to,
-  }) async {
-    final url = Uri.parse(
-      'https://api.openrouteservice.org/v2/directions/foot-walking?start=${from.longitude},${from.latitude}&end=${to.longitude},${to.latitude}&geometry_format=geojson',
-    );
-
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': openRouteServiceApiKey,
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final features = data['features'];
-
-      if (features != null && features.isNotEmpty) {
-        final geometry = features[0]['geometry'];
-        final segment = features[0]['properties']['segments'][0];
-
-        if (geometry != null && segment != null) {
-          final coords = geometry['coordinates'] as List;
-          final distanceMeters = segment['distance'];
-          final points = coords
-              .map((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
-              .toList();
-
-          if (!mounted) return;
-          setState(() {
-            walkingRoutePoints = points;
-            walkingDistanceKm = (distanceMeters / 1000).toStringAsFixed(2);
-          });
-        }
-      }
-    }
   }
 
   void _centerOnUser() {
@@ -135,9 +117,85 @@ class _DetailScreenState extends State<DetailScreen> {
         _mapController.camera.center, _mapController.camera.zoom - 1);
   }
 
+  Future<void> _handleMark(String action) async {
+    if (directDistanceKm == null || directDistanceKm! > 0.03) {
+      _showWarningDialog(action);
+      return;
+    }
+
+    final estado = action == 'ingreso' ? 'Proceso' : 'Finalizado';
+
+    final body = {
+      "home_schedule_id": widget.residence.id,
+      "home_schedule_state": estado,
+    };
+
+    final response = await http.post(
+      Uri.parse("http://143.198.118.203:8101/home/schedule_change_state/"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        hasEntered = action == 'ingreso';
+      });
+    } else {
+      _showErrorDialog("Error al marcar $action. Intente nuevamente.");
+    }
+  }
+
+  void _showWarningDialog(String action) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ADVERTENCIA'),
+        content: Text(
+          'No estás lo suficientemente cerca de la residencia.\n\n'
+          'Debes estar dentro de un radio de 30 metros para marcar $action.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String msg) {
+    if (!mounted || _isDialogVisible) return;
+
+    _isDialogVisible = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.of(context).pop();
+              }
+              _isDialogVisible = false;
+            },
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final residence = widget.residence;
+    if (residenceLocation == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Scaffold(
       body: LayoutBuilder(
@@ -154,14 +212,10 @@ class _DetailScreenState extends State<DetailScreen> {
                     alignment: Alignment.center,
                     children: [
                       Align(
-                        alignment: Alignment.centerLeft,
-                        child: BackButton(),
-                      ),
-                      Text(
-                        'Detalles residencia',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                          alignment: Alignment.centerLeft, child: BackButton()),
+                      Text('Detalles residencia',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -186,32 +240,16 @@ class _DetailScreenState extends State<DetailScreen> {
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text('Comuna:',
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold)),
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
                               Text(residence.commune),
                               const SizedBox(height: 10),
                               const Text('Dirección:',
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold)),
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
                               Text(residence.address),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  const Text('Distancia a pie:',
-                                      style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold)),
-                                  const SizedBox(width: 6),
-                                  Text(walkingDistanceKm == null
-                                      ? 'Calculando...'
-                                      : '$walkingDistanceKm km'),
-                                ],
-                              ),
                               const SizedBox(height: 20),
                               SizedBox(
                                 height: 250,
@@ -229,26 +267,25 @@ class _DetailScreenState extends State<DetailScreen> {
                                       children: [
                                         TileLayer(
                                           urlTemplate:
-                                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                              'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                          subdomains: const [
+                                            'a',
+                                            'b',
+                                            'c',
+                                            'd'
+                                          ],
+                                          retinaMode: MediaQuery.of(context)
+                                                  .devicePixelRatio >
+                                              1.0,
                                           userAgentPackageName:
                                               'com.cleanpro.app',
                                         ),
-                                        if (walkingRoutePoints.isNotEmpty)
-                                          PolylineLayer(
-                                            polylines: [
-                                              Polyline(
-                                                points: walkingRoutePoints,
-                                                color: Colors.green,
-                                                strokeWidth: 4,
-                                              ),
-                                            ],
-                                          ),
                                         if (userLocation != null)
                                           CircleLayer(
                                             circles: [
                                               CircleMarker(
                                                 point: userLocation!,
-                                                radius: 20,
+                                                radius: 30,
                                                 useRadiusInMeter: true,
                                                 color: const Color.fromARGB(
                                                     51, 33, 150, 243),
@@ -288,6 +325,40 @@ class _DetailScreenState extends State<DetailScreen> {
                                           ],
                                         ),
                                       ],
+                                    ),
+                                    Positioned(
+                                      left: 10,
+                                      top: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: const Color.fromARGB(
+                                              204, 255, 255, 255),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Colors.black26,
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            )
+                                          ],
+                                        ),
+                                        child: Text(
+                                          (directDistanceKm ??
+                                                      lastValidDirectDistanceKm) !=
+                                                  null
+                                              ? ((directDistanceKm ??
+                                                          lastValidDirectDistanceKm)! <
+                                                      1
+                                                  ? 'Distancia: ${((directDistanceKm ?? lastValidDirectDistanceKm)! * 1000).toStringAsFixed(0)} m'
+                                                  : 'Distancia: ${(directDistanceKm ?? lastValidDirectDistanceKm)!.toStringAsFixed(2)} km')
+                                              : 'Distancia: ...',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
                                     ),
                                     Positioned(
                                       right: 10,
@@ -337,14 +408,26 @@ class _DetailScreenState extends State<DetailScreen> {
                                 child: Column(
                                   children: [
                                     ElevatedButton(
-                                      onPressed: () => _showWarningDialog(
-                                          context, 'ingreso'),
+                                      onPressed: hasEntered
+                                          ? null
+                                          : () => _handleMark('ingreso'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: hasEntered
+                                            ? Colors.grey.shade400
+                                            : null,
+                                      ),
                                       child: const Text('Marcar Ingreso'),
                                     ),
                                     const SizedBox(height: 10),
                                     ElevatedButton(
-                                      onPressed: () =>
-                                          _showWarningDialog(context, 'salida'),
+                                      onPressed: hasEntered
+                                          ? () => _handleMark('salida')
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: hasEntered
+                                            ? null
+                                            : Colors.grey.shade400,
+                                      ),
                                       child: const Text('Marcar Salida'),
                                     ),
                                   ],
@@ -362,25 +445,6 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  void _showWarningDialog(BuildContext context, String action) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ADVERTENCIA'),
-        content: Text(
-          'No estás lo suficientemente cerca de la residencia\n\n'
-          'Debe estar cerca de la ubicación de la residencia para marcar $action',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Aceptar'),
-          ),
-        ],
       ),
     );
   }
