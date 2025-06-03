@@ -23,7 +23,11 @@ class _DetailScreenState extends State<DetailScreen> {
   double? lastValidDirectDistanceKm;
 
   bool hasEntered = false;
+  bool isFinalizado = false; // Nuevo flag
   bool _isDialogVisible = false;
+  bool _isLoadingIngreso = false;
+  bool _estadoCambiado = false;
+  bool _cargandoEstadoYDistancia = true; // Nuevo flag
 
   final MapController _mapController = MapController();
   final double _defaultZoom = 17.8;
@@ -38,12 +42,10 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   void initState() {
     super.initState();
-
     residenceLocation = LatLng(
       widget.residence.latitude,
       widget.residence.length,
     );
-
     _mapController.mapEventStream.listen((event) {
       if (mounted) {
         setState(() {
@@ -51,11 +53,50 @@ class _DetailScreenState extends State<DetailScreen> {
         });
       }
     });
-
-    _updateLocationAndDistances();
+    _cargarEstadoYDistancia();
     _distanceTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _updateLocationAndDistances();
     });
+  }
+
+  Future<void> _cargarEstadoYDistancia() async {
+    await Future.wait([
+      _fetchAndSetEstado(),
+      _updateLocationAndDistances(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _cargandoEstadoYDistancia = false;
+    });
+  }
+
+  Future<void> _fetchAndSetEstado() async {
+    final response = await http.get(
+      Uri.parse("http://143.198.118.203:8101/home/schedule_list_current/"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization":
+            "Basic ${base64Encode(utf8.encode('equipo3:equipo3'))}",
+      },
+    );
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data =
+          json.decode(utf8.decode(response.bodyBytes));
+      final List<dynamic> jsonList = data['list_current'] ?? [];
+      for (final r in jsonList) {
+        final id = r["home_schedule_id"] ?? r["home_clean_register_id"];
+        final state =
+            r["home_schedule_state"] ?? r["home_clean_register_state"];
+        if (id == widget.residence.id) {
+          if (!mounted) return;
+          setState(() {
+            hasEntered = (state == "Proceso");
+            isFinalizado = (state == "Finalizado");
+          });
+          break;
+        }
+      }
+    }
   }
 
   @override
@@ -117,10 +158,50 @@ class _DetailScreenState extends State<DetailScreen> {
         _mapController.camera.center, _mapController.camera.zoom - 1);
   }
 
+  Future<bool> _hasResidenceInProcess() async {
+    final response = await http.get(
+      Uri.parse("http://143.198.118.203:8101/home/schedule_list_current/"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization":
+            "Basic ${base64Encode(utf8.encode('equipo3:equipo3'))}",
+      },
+    );
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data =
+          json.decode(utf8.decode(response.bodyBytes));
+      final List<dynamic> jsonList = data['list_current'] ?? [];
+      for (final r in jsonList) {
+        final id = r["home_schedule_id"] ?? r["home_clean_register_id"];
+        final state =
+            r["home_schedule_state"] ?? r["home_clean_register_state"];
+        if (state == "Proceso" && id != widget.residence.id) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
   Future<void> _handleMark(String action) async {
-    if (directDistanceKm == null || directDistanceKm! > 0.03) {
+    if (directDistanceKm == null || directDistanceKm! > 0.05) {
       _showWarningDialog(action);
       return;
+    }
+
+    if (action == 'ingreso') {
+      setState(() {
+        _isLoadingIngreso = true;
+      });
+      final alreadyInProcess = await _hasResidenceInProcess();
+      setState(() {
+        _isLoadingIngreso = false;
+      });
+      if (alreadyInProcess) {
+        _showAlreadyInProcessDialog();
+        return;
+      }
     }
 
     final estado = action == 'ingreso' ? 'Proceso' : 'Finalizado';
@@ -130,16 +211,49 @@ class _DetailScreenState extends State<DetailScreen> {
       "home_schedule_state": estado,
     };
 
+    const url = "http://143.198.118.203:8101/home/schedule_change_state/";
+
     final response = await http.post(
-      Uri.parse("http://143.198.118.203:8101/home/schedule_change_state/"),
-      headers: {"Content-Type": "application/json"},
+      Uri.parse(url),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization":
+            "Basic ${base64Encode(utf8.encode('equipo3:equipo3'))}",
+      },
       body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
-      setState(() {
-        hasEntered = action == 'ingreso';
-      });
+      if (!mounted) return;
+      if (action == 'salida') {
+        setState(() {
+          hasEntered = false;
+          isFinalizado = true;
+          _estadoCambiado = true;
+        });
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Residencia finalizada con éxito!'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Aceptar'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        Navigator.pop(context, true); // Redirige a HomeScreen y fuerza recarga
+        return;
+      } else {
+        setState(() {
+          hasEntered = true;
+          _estadoCambiado = true;
+        });
+      }
+      // Ya no hacemos Navigator.pop aquí para ingreso
     } else {
       _showErrorDialog("Error al marcar $action. Intente nuevamente.");
     }
@@ -153,6 +267,24 @@ class _DetailScreenState extends State<DetailScreen> {
         content: Text(
           'No estás lo suficientemente cerca de la residencia.\n\n'
           'Debes estar dentro de un radio de 30 metros para marcar $action.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAlreadyInProcessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ADVERTENCIA'),
+        content: const Text(
+          'Ya hay una residencia en proceso. Solo puede haber 1 a la vez.',
         ),
         actions: [
           TextButton(
@@ -208,12 +340,18 @@ class _DetailScreenState extends State<DetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 30),
-                  const Stack(
+                  Stack(
                     alignment: Alignment.center,
                     children: [
                       Align(
-                          alignment: Alignment.centerLeft, child: BackButton()),
-                      Text('Detalles residencia',
+                        alignment: Alignment.centerLeft,
+                        child: BackButton(
+                          onPressed: () {
+                            Navigator.pop(context, _estadoCambiado);
+                          },
+                        ),
+                      ),
+                      const Text('Detalles residencia',
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
@@ -310,7 +448,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                             circles: [
                                               CircleMarker(
                                                 point: userLocation!,
-                                                radius: 30,
+                                                radius: 50,
                                                 useRadiusInMeter: true,
                                                 color: const Color.fromARGB(
                                                     51, 33, 150, 243),
@@ -370,19 +508,28 @@ class _DetailScreenState extends State<DetailScreen> {
                                             )
                                           ],
                                         ),
-                                        child: Text(
-                                          (directDistanceKm ??
-                                                      lastValidDirectDistanceKm) !=
-                                                  null
-                                              ? ((directDistanceKm ??
-                                                          lastValidDirectDistanceKm)! <
-                                                      1
-                                                  ? 'Distancia: ${((directDistanceKm ?? lastValidDirectDistanceKm)! * 1000).toStringAsFixed(0)} m'
-                                                  : 'Distancia: ${(directDistanceKm ?? lastValidDirectDistanceKm)!.toStringAsFixed(2)} km')
-                                              : 'Distancia: ...',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold),
-                                        ),
+                                        child: _cargandoEstadoYDistancia
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2),
+                                              )
+                                            : Text(
+                                                (directDistanceKm ??
+                                                            lastValidDirectDistanceKm) !=
+                                                        null
+                                                    ? ((directDistanceKm ??
+                                                                lastValidDirectDistanceKm)! <
+                                                            1
+                                                        ? 'Distancia: ${((directDistanceKm ?? lastValidDirectDistanceKm)! * 1000).toStringAsFixed(0)} metros'
+                                                        : 'Distancia: ${(directDistanceKm ?? lastValidDirectDistanceKm)!.toStringAsFixed(2)} km')
+                                                    : '',
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
                                       ),
                                     ),
                                     Positioned(
@@ -437,33 +584,63 @@ class _DetailScreenState extends State<DetailScreen> {
                               ),
                               const SizedBox(height: 30),
                               Center(
-                                child: Column(
-                                  children: [
-                                    ElevatedButton(
-                                      onPressed: hasEntered
-                                          ? null
-                                          : () => _handleMark('ingreso'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: hasEntered
-                                            ? Colors.grey.shade400
-                                            : null,
+                                child: isFinalizado
+                                    ? const Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 16),
+                                        child: Text(
+                                          'La residencia ya ha sido finalizada',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                              fontSize: 16),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      )
+                                    : Column(
+                                        children: [
+                                          ElevatedButton(
+                                            onPressed:
+                                                (_cargandoEstadoYDistancia ||
+                                                        hasEntered ||
+                                                        _isLoadingIngreso)
+                                                    ? null
+                                                    : () =>
+                                                        _handleMark('ingreso'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: (hasEntered ||
+                                                      _cargandoEstadoYDistancia)
+                                                  ? Colors.grey.shade400
+                                                  : null,
+                                            ),
+                                            child: _isLoadingIngreso
+                                                ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2),
+                                                  )
+                                                : const Text('Marcar Ingreso'),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          ElevatedButton(
+                                            onPressed:
+                                                (_cargandoEstadoYDistancia ||
+                                                        !hasEntered)
+                                                    ? null
+                                                    : () =>
+                                                        _handleMark('salida'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: (!hasEntered ||
+                                                      _cargandoEstadoYDistancia)
+                                                  ? Colors.grey.shade400
+                                                  : null,
+                                            ),
+                                            child: const Text('Marcar Salida'),
+                                          ),
+                                        ],
                                       ),
-                                      child: const Text('Marcar Ingreso'),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    ElevatedButton(
-                                      onPressed: hasEntered
-                                          ? () => _handleMark('salida')
-                                          : null,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: hasEntered
-                                            ? null
-                                            : Colors.grey.shade400,
-                                      ),
-                                      child: const Text('Marcar Salida'),
-                                    ),
-                                  ],
-                                ),
                               ),
                             ],
                           ),

@@ -12,6 +12,7 @@ class Residence {
   String status;
   final double latitude;
   final double length;
+  final String? date; // Fecha de finalización
 
   Residence({
     required this.id,
@@ -22,6 +23,7 @@ class Residence {
     required this.status,
     required this.latitude,
     required this.length,
+    this.date,
   });
 
   factory Residence.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,7 @@ class Residence {
       status: json['home_clean_register_state'] ?? 'Pendiente',
       latitude: json['home_data_latitude']?.toDouble() ?? 0.0,
       length: json['home_data_length']?.toDouble() ?? 0.0,
+      date: json['home_clean_register_date'],
     );
   }
 
@@ -100,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final residences = jsonList
           .map((e) => Residence.fromJson(e))
           .where((r) => !blacklist.contains(r.address))
+          .where((r) => r.status != 'Finalizado')
           .toSet()
           .toList();
 
@@ -112,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,23 +145,32 @@ class _HomeScreenState extends State<HomeScreen> {
               'Residencias asignadas hoy',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            FutureBuilder<List<Residence>>(
-              future: _residencesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Text('No hay residencias disponibles.');
-                }
+            const SizedBox(height: 4),
+            Expanded(
+              child: FutureBuilder<List<Residence>>(
+                future: _residencesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Text('No hay residencias disponibles.');
+                  }
 
-                return Column(
-                  children: snapshot.data!
-                      .map((res) => _buildResidenceItem(context, res))
-                      .toList(),
-                );
-              },
+                  return ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      final res = snapshot.data![index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: _buildResidenceItem(context, res),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -182,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: EdgeInsets.zero,
       child: ListTile(
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -195,8 +208,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Icon(Icons.home),
           ),
         ),
-        title:
-            Text(res.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          res.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -208,12 +223,17 @@ class _HomeScreenState extends State<HomeScreen> {
           label: Text(res.status),
           backgroundColor: statusColor,
         ),
-        onTap: () {
-          Navigator.pushNamed(
+        onTap: () async {
+          final result = await Navigator.pushNamed(
             context,
             AppRoutes.detail,
             arguments: res,
           );
+          if (result == true) {
+            setState(() {
+              _residencesFuture = fetchResidences();
+            });
+          }
         },
       ),
     );
