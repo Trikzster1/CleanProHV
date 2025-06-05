@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../routes/app_routes.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,6 +16,39 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  bool cargando = false;
+
+  Future<void> _loginFirebase() async {
+    setState(() => cargando = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _userController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      Navigator.pushReplacementNamed(context, AppRoutes.main);
+    } on FirebaseAuthException catch (e) {
+      String mensaje = 'Error de inicio de sesión';
+      if (e.code == 'user-not-found') mensaje = 'Usuario no encontrado';
+      if (e.code == 'wrong-password') mensaje = 'Contraseña incorrecta';
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Error'),
+          content: Text(mensaje),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      setState(() => cargando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey, // Asignamos el key al form
+          key: _formKey,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -35,12 +69,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-
-              // Usuario
               TextFormField(
                 controller: _userController,
                 decoration: const InputDecoration(
-                  labelText: 'Usuario',
+                  labelText: 'Usuario (correo)',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -51,8 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 15),
-
-              // Contraseña
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
@@ -67,26 +97,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
-
-              Row(
-                children: [
-                  Checkbox(
-                    value: rememberMe,
-                    onChanged: (value) => setState(() => rememberMe = value!),
-                  ),
-                  const Text('Recuérdame'),
-                ],
-              ),
               const SizedBox(height: 10),
-
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    Navigator.pushReplacementNamed(context, AppRoutes.main);
-                  }
-                },
-                child: const Text('Iniciar Sesión'),
-              ),
+              cargando
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          _loginFirebase();
+                        }
+                      },
+                      child: const Text('Iniciar Sesión'),
+                    ),
             ],
           ),
         ),

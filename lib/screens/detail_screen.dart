@@ -23,16 +23,17 @@ class _DetailScreenState extends State<DetailScreen> {
   double? lastValidDirectDistanceKm;
 
   bool hasEntered = false;
-  bool isFinalizado = false; // Nuevo flag
+  bool isFinalizado = false;
   bool _isDialogVisible = false;
   bool _isLoadingIngreso = false;
   bool _estadoCambiado = false;
-  bool _cargandoEstadoYDistancia = true; // Nuevo flag
+  bool _cargandoEstadoYDistancia = true;
 
   final MapController _mapController = MapController();
   final double _defaultZoom = 17.8;
   List<LatLng> walkingRoutePoints = [];
   double _rotation = 0;
+  bool showRoute = false;
 
   Timer? _distanceTimer;
 
@@ -57,6 +58,31 @@ class _DetailScreenState extends State<DetailScreen> {
     _distanceTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _updateLocationAndDistances();
     });
+  }
+
+  Future<void> _fetchWalkingRoute() async {
+    if (userLocation == null || residenceLocation == null) return;
+
+    final url = Uri.parse(
+      'https://api.openrouteservice.org/v2/directions/foot-walking?start=${userLocation!.longitude},${userLocation!.latitude}&end=${residenceLocation!.longitude},${residenceLocation!.latitude}&geometry_format=geojson',
+    );
+
+    final response = await http.get(
+      url,
+      headers: {'Authorization': openRouteServiceApiKey},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final coords = data['features'][0]['geometry']['coordinates'] as List;
+      final points =
+          coords.map((c) => LatLng(c[1].toDouble(), c[0].toDouble())).toList();
+
+      if (!mounted) return;
+      setState(() {
+        walkingRoutePoints = points;
+      });
+    }
   }
 
   Future<void> _cargarEstadoYDistancia() async {
@@ -103,7 +129,6 @@ class _DetailScreenState extends State<DetailScreen> {
   void dispose() {
     _distanceTimer?.cancel();
     _isDialogVisible = false;
-
     super.dispose();
   }
 
@@ -245,7 +270,7 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         );
         if (!mounted) return;
-        Navigator.pop(context, true); // Redirige a HomeScreen y fuerza recarga
+        Navigator.pop(context, true);
         return;
       } else {
         setState(() {
@@ -253,7 +278,6 @@ class _DetailScreenState extends State<DetailScreen> {
           _estadoCambiado = true;
         });
       }
-      // Ya no hacemos Navigator.pop aquí para ingreso
     } else {
       _showErrorDialog("Error al marcar $action. Intente nuevamente.");
     }
@@ -379,10 +403,36 @@ class _DetailScreenState extends State<DetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Card(
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    residence.image,
+                                    width: double.infinity,
+                                    height: 200,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                      height: 200,
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: Icon(Icons.home,
+                                            size: 50, color: Colors.grey),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
                               Row(
                                 children: [
                                   const Text(
-                                    '\u2022 ', // Punto tipo lista
+                                    '\u2022 ',
                                     style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold),
@@ -401,7 +451,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               Row(
                                 children: [
                                   const Text(
-                                    '\u2022 ', // Punto tipo lista
+                                    '\u2022 ',
                                     style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold),
@@ -443,6 +493,17 @@ class _DetailScreenState extends State<DetailScreen> {
                                           userAgentPackageName:
                                               'com.cleanpro.app',
                                         ),
+                                        if (showRoute &&
+                                            walkingRoutePoints.isNotEmpty)
+                                          PolylineLayer(
+                                            polylines: [
+                                              Polyline(
+                                                points: walkingRoutePoints,
+                                                color: Colors.red,
+                                                strokeWidth: 4,
+                                              ),
+                                            ],
+                                          ),
                                         if (userLocation != null)
                                           CircleLayer(
                                             circles: [
@@ -537,7 +598,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                       top: 0,
                                       bottom: 0,
                                       child: SizedBox(
-                                        height: 320, // igual al alto del mapa
+                                        height: 320,
                                         child: Column(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -574,6 +635,22 @@ class _DetailScreenState extends State<DetailScreen> {
                                               onPressed: _zoomOut,
                                               tooltip: 'Alejar',
                                               child: const Icon(Icons.zoom_out),
+                                            ),
+                                            const SizedBox(height: 20),
+                                            FloatingActionButton(
+                                              heroTag: 'btnRoute',
+                                              mini: true,
+                                              onPressed: () {
+                                                setState(() {
+                                                  showRoute = !showRoute;
+                                                  if (showRoute) {
+                                                    _fetchWalkingRoute();
+                                                  }
+                                                });
+                                              },
+                                              tooltip: 'Mostrar ruta',
+                                              child:
+                                                  const Icon(Icons.directions),
                                             ),
                                           ],
                                         ),
