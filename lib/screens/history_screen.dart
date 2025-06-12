@@ -90,7 +90,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 children: [
                   const SizedBox(height: 20),
                   const Text(
-                    'Residencias finalizadas este mes',
+                    'Residencias finalizadas:',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
@@ -108,8 +108,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         } else if (!snapshot.hasData ||
                             snapshot.data!.isEmpty) {
                           return const Center(
-                            child: Text(
-                                'No hay residencias finalizadas este mes.'),
+                            child: Text('No hay residencias finalizadas'),
                           );
                         }
 
@@ -180,7 +179,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           const SizedBox(height: 10),
                           Center(
                             child: Text(
-                              'Residencias este mes: $count',
+                              'Cantidad de residencias completadas en el día: $count',
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
