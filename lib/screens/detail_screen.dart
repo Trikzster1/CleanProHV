@@ -354,81 +354,64 @@ class _DetailScreenState extends State<DetailScreen> {
     }
 
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 30),
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: BackButton(
-                          onPressed: () {
-                            Navigator.pop(context, _estadoCambiado);
-                          },
-                        ),
-                      ),
-                      const Text('Detalles residencia',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                    ],
+      body: Column(
+        children: [
+          // RECUADRO AZUL COMPLETO (sin bordes) - Bajado con padding superior
+          Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              color: Colors.blue,
+            ),
+            padding:
+                const EdgeInsets.fromLTRB(16, 40, 16, 16), // Más padding arriba
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    icon: const Icon(
+                      // Flecha sin círculo blanco
+                      Icons.arrow_back,
+                      color: Colors.white, // Color blanco
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context, _estadoCambiado);
+                    },
                   ),
-                  const SizedBox(height: 10),
-                  const Divider(thickness: 1.2),
-                  const SizedBox(height: 10),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      child: IntrinsicHeight(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(127, 255, 255, 255),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              )
-                            ],
-                          ),
-                          child: Column(
+                ),
+                const Text(
+                  'Detalles residencia',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // CONTENIDO PRINCIPAL EN CARDS
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Card superior con imagen de referencia y datos
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Información de comuna y dirección dentro de la card
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Card(
-                                elevation: 4,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    residence.image,
-                                    width: double.infinity,
-                                    height: 200,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                      height: 200,
-                                      color: Colors.grey[200],
-                                      child: const Center(
-                                        child: Icon(Icons.home,
-                                            size: 50, color: Colors.grey),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
                               Row(
                                 children: [
                                   const Text(
@@ -447,7 +430,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   Text(residence.commune),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               Row(
                                 children: [
                                   const Text(
@@ -456,281 +439,306 @@ class _DetailScreenState extends State<DetailScreen> {
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold),
                                   ),
-                                  const Text('Dirección: ',
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold)),
+                                  const Text(
+                                    'Dirección: ',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
+                                  ),
                                   Text(residence.address),
                                 ],
                               ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                height: 320,
-                                child: Stack(
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Imagen de referencia de la residencia',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              residence.image,
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                height: 200,
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: Icon(Icons.home,
+                                      size: 50, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Card inferior con mapa y botones (se mantiene igual)
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 320,
+                            child: Stack(
+                              children: [
+                                FlutterMap(
+                                  mapController: _mapController,
+                                  options: MapOptions(
+                                    initialCenter: residenceLocation!,
+                                    initialZoom: _defaultZoom,
+                                    interactionOptions:
+                                        const InteractionOptions(
+                                            flags: InteractiveFlag.all),
+                                  ),
                                   children: [
-                                    FlutterMap(
-                                      mapController: _mapController,
-                                      options: MapOptions(
-                                        initialCenter: residenceLocation!,
-                                        initialZoom: _defaultZoom,
-                                        interactionOptions:
-                                            const InteractionOptions(
-                                                flags: InteractiveFlag.all),
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                      subdomains: const ['a', 'b', 'c', 'd'],
+                                      retinaMode: MediaQuery.of(context)
+                                              .devicePixelRatio >
+                                          1.0,
+                                      userAgentPackageName: 'com.cleanpro.app',
+                                    ),
+                                    if (showRoute &&
+                                        walkingRoutePoints.isNotEmpty)
+                                      PolylineLayer(
+                                        polylines: [
+                                          Polyline(
+                                            points: walkingRoutePoints,
+                                            color: Colors.red,
+                                            strokeWidth: 4,
+                                          ),
+                                        ],
                                       ),
-                                      children: [
-                                        TileLayer(
-                                          urlTemplate:
-                                              'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                          subdomains: const [
-                                            'a',
-                                            'b',
-                                            'c',
-                                            'd'
-                                          ],
-                                          retinaMode: MediaQuery.of(context)
-                                                  .devicePixelRatio >
-                                              1.0,
-                                          userAgentPackageName:
-                                              'com.cleanpro.app',
+                                    if (userLocation != null)
+                                      CircleLayer(
+                                        circles: [
+                                          CircleMarker(
+                                            point: userLocation!,
+                                            radius: 50,
+                                            useRadiusInMeter: true,
+                                            color: const Color.fromARGB(
+                                                51, 33, 150, 243),
+                                            borderStrokeWidth: 1,
+                                            borderColor: const Color.fromARGB(
+                                                128, 33, 150, 243),
+                                          ),
+                                        ],
+                                      ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: residenceLocation!,
+                                          width: 40,
+                                          height: 40,
+                                          child: Transform.rotate(
+                                            angle: -_rotation,
+                                            child: const Icon(Icons.home,
+                                                color: Colors.red, size: 32),
+                                          ),
                                         ),
-                                        if (showRoute &&
-                                            walkingRoutePoints.isNotEmpty)
-                                          PolylineLayer(
-                                            polylines: [
-                                              Polyline(
-                                                points: walkingRoutePoints,
-                                                color: Colors.red,
-                                                strokeWidth: 4,
-                                              ),
-                                            ],
-                                          ),
                                         if (userLocation != null)
-                                          CircleLayer(
-                                            circles: [
-                                              CircleMarker(
-                                                point: userLocation!,
-                                                radius: 50,
-                                                useRadiusInMeter: true,
-                                                color: const Color.fromARGB(
-                                                    51, 33, 150, 243),
-                                                borderStrokeWidth: 1,
-                                                borderColor:
-                                                    const Color.fromARGB(
-                                                        128, 33, 150, 243),
-                                              ),
-                                            ],
-                                          ),
-                                        MarkerLayer(
-                                          markers: [
-                                            Marker(
-                                              point: residenceLocation!,
-                                              width: 40,
-                                              height: 40,
-                                              child: Transform.rotate(
-                                                angle: -_rotation,
-                                                child: const Icon(Icons.home,
-                                                    color: Colors.red,
-                                                    size: 32),
-                                              ),
+                                          Marker(
+                                            point: userLocation!,
+                                            width: 40,
+                                            height: 40,
+                                            child: Transform.rotate(
+                                              angle: -_rotation,
+                                              child: const Icon(
+                                                  Icons.person_pin_circle,
+                                                  color: Colors.blue,
+                                                  size: 32),
                                             ),
-                                            if (userLocation != null)
-                                              Marker(
-                                                point: userLocation!,
-                                                width: 40,
-                                                height: 40,
-                                                child: Transform.rotate(
-                                                  angle: -_rotation,
-                                                  child: const Icon(
-                                                      Icons.person_pin_circle,
-                                                      color: Colors.blue,
-                                                      size: 32),
-                                                ),
-                                              ),
-                                          ],
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Positioned(
+                                  left: 10,
+                                  top: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromARGB(
+                                          204, 255, 255, 255),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        )
+                                      ],
+                                    ),
+                                    child: _cargandoEstadoYDistancia
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          )
+                                        : Text(
+                                            (directDistanceKm ??
+                                                        lastValidDirectDistanceKm) !=
+                                                    null
+                                                ? ((directDistanceKm ??
+                                                            lastValidDirectDistanceKm)! <
+                                                        1
+                                                    ? 'Distancia: ${((directDistanceKm ?? lastValidDirectDistanceKm)! * 1000).toStringAsFixed(0)} metros'
+                                                    : 'Distancia: ${(directDistanceKm ?? lastValidDirectDistanceKm)!.toStringAsFixed(2)} km')
+                                                : '',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 10,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: SizedBox(
+                                    height: 320,
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        FloatingActionButton(
+                                          heroTag: 'btnUser',
+                                          mini: true,
+                                          onPressed: _centerOnUser,
+                                          tooltip: 'Centrar en mi ubicación',
+                                          child: const Icon(Icons.my_location),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        FloatingActionButton(
+                                          heroTag: 'btnHouse',
+                                          mini: true,
+                                          onPressed: _centerOnResidence,
+                                          tooltip: 'Centrar en residencia',
+                                          child: const Icon(Icons.home),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        FloatingActionButton(
+                                          heroTag: 'btnZoomIn',
+                                          mini: true,
+                                          onPressed: _zoomIn,
+                                          tooltip: 'Acercar',
+                                          child: const Icon(Icons.zoom_in),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        FloatingActionButton(
+                                          heroTag: 'btnZoomOut',
+                                          mini: true,
+                                          onPressed: _zoomOut,
+                                          tooltip: 'Alejar',
+                                          child: const Icon(Icons.zoom_out),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        FloatingActionButton(
+                                          heroTag: 'btnRoute',
+                                          mini: true,
+                                          onPressed: () {
+                                            setState(() {
+                                              showRoute = !showRoute;
+                                              if (showRoute) {
+                                                _fetchWalkingRoute();
+                                              }
+                                            });
+                                          },
+                                          tooltip: 'Mostrar ruta',
+                                          child: const Icon(Icons.directions),
                                         ),
                                       ],
                                     ),
-                                    Positioned(
-                                      left: 10,
-                                      top: 10,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: const Color.fromARGB(
-                                              204, 255, 255, 255),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Colors.black26,
-                                              blurRadius: 4,
-                                              offset: Offset(0, 2),
-                                            )
-                                          ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: isFinalizado
+                                ? const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Text(
+                                      'La residencia ya ha sido finalizada',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                          fontSize: 16),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  )
+                                : Column(
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: (_cargandoEstadoYDistancia ||
+                                                hasEntered ||
+                                                _isLoadingIngreso)
+                                            ? null
+                                            : () => _handleMark('ingreso'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: (hasEntered ||
+                                                  _cargandoEstadoYDistancia)
+                                              ? Colors.grey.shade400
+                                              : null,
                                         ),
-                                        child: _cargandoEstadoYDistancia
+                                        child: _isLoadingIngreso
                                             ? const SizedBox(
-                                                width: 18,
-                                                height: 18,
+                                                width: 20,
+                                                height: 20,
                                                 child:
                                                     CircularProgressIndicator(
                                                         strokeWidth: 2),
                                               )
-                                            : Text(
-                                                (directDistanceKm ??
-                                                            lastValidDirectDistanceKm) !=
-                                                        null
-                                                    ? ((directDistanceKm ??
-                                                                lastValidDirectDistanceKm)! <
-                                                            1
-                                                        ? 'Distancia: ${((directDistanceKm ?? lastValidDirectDistanceKm)! * 1000).toStringAsFixed(0)} metros'
-                                                        : 'Distancia: ${(directDistanceKm ?? lastValidDirectDistanceKm)!.toStringAsFixed(2)} km')
-                                                    : '',
-                                                style: const TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
+                                            : const Text('Marcar Ingreso'),
                                       ),
-                                    ),
-                                    Positioned(
-                                      right: 10,
-                                      top: 0,
-                                      bottom: 0,
-                                      child: SizedBox(
-                                        height: 320,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            FloatingActionButton(
-                                              heroTag: 'btnUser',
-                                              mini: true,
-                                              onPressed: _centerOnUser,
-                                              tooltip:
-                                                  'Centrar en mi ubicación',
-                                              child:
-                                                  const Icon(Icons.my_location),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            FloatingActionButton(
-                                              heroTag: 'btnHouse',
-                                              mini: true,
-                                              onPressed: _centerOnResidence,
-                                              tooltip: 'Centrar en residencia',
-                                              child: const Icon(Icons.home),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            FloatingActionButton(
-                                              heroTag: 'btnZoomIn',
-                                              mini: true,
-                                              onPressed: _zoomIn,
-                                              tooltip: 'Acercar',
-                                              child: const Icon(Icons.zoom_in),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            FloatingActionButton(
-                                              heroTag: 'btnZoomOut',
-                                              mini: true,
-                                              onPressed: _zoomOut,
-                                              tooltip: 'Alejar',
-                                              child: const Icon(Icons.zoom_out),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            FloatingActionButton(
-                                              heroTag: 'btnRoute',
-                                              mini: true,
-                                              onPressed: () {
-                                                setState(() {
-                                                  showRoute = !showRoute;
-                                                  if (showRoute) {
-                                                    _fetchWalkingRoute();
-                                                  }
-                                                });
-                                              },
-                                              tooltip: 'Mostrar ruta',
-                                              child:
-                                                  const Icon(Icons.directions),
-                                            ),
-                                          ],
+                                      const SizedBox(height: 10),
+                                      ElevatedButton(
+                                        onPressed: (_cargandoEstadoYDistancia ||
+                                                !hasEntered)
+                                            ? null
+                                            : () => _handleMark('salida'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: (!hasEntered ||
+                                                  _cargandoEstadoYDistancia)
+                                              ? Colors.grey.shade400
+                                              : null,
                                         ),
+                                        child: const Text('Marcar Salida'),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 30),
-                              Center(
-                                child: isFinalizado
-                                    ? const Padding(
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 16),
-                                        child: Text(
-                                          'La residencia ya ha sido finalizada',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green,
-                                              fontSize: 16),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      )
-                                    : Column(
-                                        children: [
-                                          ElevatedButton(
-                                            onPressed:
-                                                (_cargandoEstadoYDistancia ||
-                                                        hasEntered ||
-                                                        _isLoadingIngreso)
-                                                    ? null
-                                                    : () =>
-                                                        _handleMark('ingreso'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: (hasEntered ||
-                                                      _cargandoEstadoYDistancia)
-                                                  ? Colors.grey.shade400
-                                                  : null,
-                                            ),
-                                            child: _isLoadingIngreso
-                                                ? const SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                            strokeWidth: 2),
-                                                  )
-                                                : const Text('Marcar Ingreso'),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          ElevatedButton(
-                                            onPressed:
-                                                (_cargandoEstadoYDistancia ||
-                                                        !hasEntered)
-                                                    ? null
-                                                    : () =>
-                                                        _handleMark('salida'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: (!hasEntered ||
-                                                      _cargandoEstadoYDistancia)
-                                                  ? Colors.grey.shade400
-                                                  : null,
-                                            ),
-                                            child: const Text('Marcar Salida'),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ],
+                                    ],
+                                  ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
                 ],
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
