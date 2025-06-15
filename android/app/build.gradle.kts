@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Plugin de Flutter
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -20,10 +20,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.cleanpro"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,8 +29,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Usa la firma de debug para que compile sin error
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -42,3 +38,12 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Firebase Authentication y Analytics
+    implementation("com.google.firebase:firebase-auth-ktx:22.3.0")
+    implementation("com.google.firebase:firebase-analytics-ktx:21.5.0")
+}
+
+// Aplica el plugin de servicios de Google (Firebase)
+apply(plugin = "com.google.gms.google-services")

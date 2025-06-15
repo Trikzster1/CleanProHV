@@ -26,17 +26,49 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _currentIndex == 0 ? Colors.blue : Colors.transparent,
+              ),
+              child: Icon(
+                Icons.home,
+                color: _currentIndex == 0 ? Colors.white : Colors.grey,
+              ),
+            ),
             label: 'Inicio',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _currentIndex == 1 ? Colors.blue : Colors.transparent,
+              ),
+              child: Icon(
+                Icons.history,
+                color: _currentIndex == 1 ? Colors.white : Colors.grey,
+              ),
+            ),
             label: 'Historial',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _currentIndex == 2 ? Colors.blue : Colors.transparent,
+              ),
+              child: Icon(
+                Icons.person,
+                color: _currentIndex == 2 ? Colors.white : Colors.grey,
+              ),
+            ),
             label: 'Perfil',
           ),
         ],

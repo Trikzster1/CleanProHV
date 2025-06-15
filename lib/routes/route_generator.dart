@@ -4,7 +4,7 @@ import '../screens/main_navigation.dart';
 import '../screens/detail_screen.dart';
 import '../screens/error_screen.dart';
 import '../routes/app_routes.dart';
-import '../screens/home_screen.dart'; // Asegúrate que aquí esté Residence
+import '../screens/home_screen.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
